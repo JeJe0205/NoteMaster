@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:note_master/Model/note.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 
-class NotePage extends StatelessWidget {
+class NotePage extends StatefulWidget {
   final List<Note> notes;
   final Function(Note) onNoteSelected;
   final Function(Note) onNoteDeleted;
@@ -16,19 +17,51 @@ class NotePage extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _NotePageState createState() => _NotePageState();
+}
+
+class _NotePageState extends State<NotePage> {
+  double _accelerometerThreshold = 12.0; // Adjust the threshold as needed
+
+  @override
+  void initState() {
+    super.initState();
+    // Start listening to accelerometer events
+    accelerometerEvents.listen((event) {
+      setState(() {
+        if (event.x.abs() > _accelerometerThreshold ||
+            event.y.abs() > _accelerometerThreshold ||
+            event.z.abs() > _accelerometerThreshold) {
+          // Shake detected, delete the first note
+          if (widget.notes.isNotEmpty) {
+            widget.onNoteDeleted(widget.notes.first);
+          }
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // Stop listening to accelerometer events
+    accelerometerEvents.drain();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ReorderableListView.builder(
-      itemCount: notes.length,
+      itemCount: widget.notes.length,
       itemBuilder: (context, index) {
-        final note = notes[index];
+        final note = widget.notes[index];
         return ListTile(
           key: ValueKey(note),
           title: Text(note.title),
           subtitle: Text(note.content),
-          onTap: () => onNoteSelected(note),
+          onTap: () => widget.onNoteSelected(note),
           trailing: IconButton(
             icon: Icon(Icons.delete),
-            onPressed: () => onNoteDeleted(note),
+            onPressed: () => widget.onNoteDeleted(note),
           ),
         );
       },
@@ -36,7 +69,7 @@ class NotePage extends StatelessWidget {
         if (newIndex > oldIndex) {
           newIndex -= 1;
         }
-        onNoteMoved(oldIndex, newIndex);
+        widget.onNoteMoved(oldIndex, newIndex);
       },
     );
   }
